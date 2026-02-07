@@ -17,8 +17,6 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 
-from lets_go.views_cron import run_pre_ride_reminders_view
-
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('lets_go/', include('lets_go.urls')),

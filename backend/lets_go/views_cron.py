@@ -12,12 +12,13 @@ from lets_go.management.commands.send_pre_ride_reminders import run_pre_ride_rem
 def run_pre_ride_reminders_view(request):
     """HTTP endpoint to trigger pre-ride reminder job.
 
-    Protected by a simple shared secret header so only Vercel Cron
-    (or other trusted callers) can invoke it.
+    Protected by CRON_SECRET via the Authorization header.
+    When using vercel.json "crons", Vercel sends
+    Authorization: Bearer $CRON_SECRET
     """
     expected = os.environ.get("CRON_SECRET", "")
-    provided = request.headers.get("X-Cron-Secret", "")
-    if not expected or provided != expected:
+    auth_header = request.headers.get("Authorization", "")
+    if not expected or auth_header != f"Bearer {expected}":
         return HttpResponseForbidden("Forbidden")
 
     window_minutes = 5

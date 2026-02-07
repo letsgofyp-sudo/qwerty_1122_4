@@ -196,6 +196,11 @@ class Booking(models.Model):
         default='UNKNOWN'
     )
 
+    pre_ride_reminder_sent = models.BooleanField(
+        default=False,
+        help_text="Has the T-10 pre-ride reminder been sent for this booking?",
+    )
+
     ride_status = models.CharField(
         max_length=20,
         choices=RIDE_STATUS_CHOICES,

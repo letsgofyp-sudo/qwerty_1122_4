@@ -23,5 +23,4 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('lets_go/', include('lets_go.urls')),
     path('administration/', include('administration.urls')),
-    path('internal/cron/pre-ride-reminders/', run_pre_ride_reminders_view),
 ]

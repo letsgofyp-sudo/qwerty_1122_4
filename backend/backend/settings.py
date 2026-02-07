@@ -189,3 +189,9 @@ STORAGES = {
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+expected = os.environ.get("CRON_SECRET", "")
+provided = request.headers.get("X-Cron-Secret", "")
+if not expected or provided != expected:
+    return HttpResponseForbidden("Forbidden")

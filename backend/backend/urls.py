@@ -15,10 +15,13 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path,include
+from django.urls import path, include
+
+from lets_go.views_cron import run_pre_ride_reminders_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('lets_go/', include('lets_go.urls')),
     path('administration/', include('administration.urls')),
+    path('internal/cron/pre-ride-reminders/', run_pre_ride_reminders_view),
 ]

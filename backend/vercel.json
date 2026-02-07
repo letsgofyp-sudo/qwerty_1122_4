@@ -9,5 +9,11 @@
   ],
   "routes": [
     { "src": "/(.*)", "dest": "backend/wsgi.py" }
+  ],
+  "crons": [
+    {
+      "path": "/internal/cron/pre-ride-reminders/",
+      "schedule": "*/1 * * * *"
+    }
   ]
 }

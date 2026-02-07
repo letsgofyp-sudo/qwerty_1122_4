@@ -1,0 +1,92 @@
+{% extends 'administration/base.html' %}
+
+{% block title %}Rides Dashboard{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">Rides Dashboard</h1>
+
+    <section class="cards">
+      <div class="card">
+        <h3>Total Trips</h3>
+        <p>{{ total_trips }}</p>
+      </div>
+      <div class="card">
+        <h3>Trips Today ({{ today|date:'Y-m-d' }})</h3>
+        <p>{{ trips_today }}</p>
+      </div>
+      <div class="card">
+        <h3>In Progress</h3>
+        <p>{{ in_progress_trips }}</p>
+      </div>
+      <div class="card">
+        <h3>Completed Today</h3>
+        <p>{{ completed_today }}</p>
+      </div>
+      <div class="card">
+        <h3>Total Bookings</h3>
+        <p>{{ total_bookings }}</p>
+      </div>
+    </section>
+
+    <section style="margin-top:32px;">
+      <h2 style="margin-bottom:12px;">Recent Trips</h2>
+      {% if recent_trips %}
+        <div class="table-container">
+          <table class="styled-table">
+            <thead>
+              <tr>
+                <th>Trip ID</th>
+                <th>Date</th>
+                <th>Departure</th>
+                <th>Route</th>
+                <th>Driver</th>
+                <th>Vehicle</th>
+                <th>Status</th>
+                <th>Seats (used/total)</th>
+                <th>Bookings</th>
+                <th>Negotiations</th>
+                <th>Paid</th>
+                <th>Cancelled</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in recent_trips %}
+                <tr>
+                  <td>
+                    <a href="{% url 'administration:admin_trip_detail' trip_pk=t.id %}">{{ t.trip_id }}</a>
+                  </td>
+                  <td>{{ t.trip_date|date:'Y-m-d' }}</td>
+                  <td>{{ t.departure_time|time:'H:i' }}</td>
+                  <td>{{ t.route.route_name }}</td>
+                  <td>
+                    <a href="{% url 'administration:user_detail' user_id=t.driver.id %}">{{ t.driver.name }}</a>
+                  </td>
+                  <td>
+                    {% if t.vehicle %}
+                      <a href="{% url 'administration:vehicle_detail' user_id=t.driver.id %}">{{ t.vehicle.plate_number }}</a>
+                    {% else %}-{% endif %}
+                  </td>
+                  <td>{{ t.trip_status }}</td>
+                  <td>
+                    {{ t.seats_booked|default:0 }}
+                    {% if t.seats_booked|default:0 > 0 %}
+                      (M:{{ t.male_seats_booked|default:0 }} F:{{ t.female_seats_booked|default:0 }})
+                    {% endif %}
+                    /{{ t.total_seats }}
+                  </td>
+                  <td>{{ t.bookings_count|default:0 }}</td>
+                  <td>{{ t.negotiated_bookings|default:0 }}</td>
+                  <td>{{ t.paid_bookings|default:0 }}</td>
+                  <td>{{ t.cancelled_bookings|default:0 }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p>No trips found.</p>
+      {% endif %}
+    </section>
+  </main>
+{% endblock %}

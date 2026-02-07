@@ -1,0 +1,62 @@
+{% extends 'administration/base.html' %}
+{% load static %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block head_extra %}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+    <!-- KPI Cards -->
+    <section class="cards">
+      <div class="card">
+        <h3>Active Users</h3>
+        <p id="kpi-active-users">—</p>
+      </div>
+      <div class="card">
+        <h3>Rides Today</h3>
+        <p id="kpi-rides-today">—</p>
+      </div>
+      <div class="card">
+        <h3>Cancellations</h3>
+        <p id="kpi-cancellations">—</p>
+      </div>
+      <div class="card">
+        <h3>Avg. Wait Time</h3>
+        <p id="kpi-wait-time">—</p>
+      </div>
+      <div class="card">
+        <h3>Completed Trips</h3>
+        <p id="kpi-completed-trips">—</p>
+      </div>
+      <div class="card">
+        <h3>Flagged Incidents</h3>
+        <p id="kpi-flagged">—</p>
+      </div>
+    </section>
+
+    <!-- Analytics Charts -->
+    <section class="charts">
+      <div class="chart-container">
+        <canvas id="tsRidesChart"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="ridesByHourHeatmap"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="userGrowthChart"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="cancellationDoughnut"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="waitVsCompleted"></canvas>
+      </div>
+    </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'administration/index.js' %}"></script>
+{% endblock %}

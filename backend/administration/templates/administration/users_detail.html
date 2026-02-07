@@ -1,0 +1,119 @@
+{% extends 'administration/base.html' %}
+{% load static %}
+
+{% block title %}User Detail{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">User Detail</h1>
+    <div class="user-detail-card">
+      <div class="user-fields">
+        <div class="user-img-field">
+          <strong>Profile Photo</strong><br>
+          {% if user.profile_photo_url %}
+            <img src="{{ user.profile_photo_url }}" class="user-img" alt="Profile Photo">
+          {% else %}
+            <span>No image</span>
+          {% endif %}
+        </div>
+        <div class="user-img-field">
+          <strong>Live Photo</strong><br>
+          {% if user.live_photo_url %}
+            <img src="{{ user.live_photo_url }}" class="user-img" alt="Live Photo">
+          {% else %}
+            <span>No image</span>
+          {% endif %}
+        </div>
+        <div class="user-img-field">
+          <strong>Account QR</strong><br>
+          {% if user.accountqr_url %}
+            <img src="{{ user.accountqr_url }}" class="user-img" alt="Account QR">
+          {% else %}
+            <span>No image</span>
+          {% endif %}
+        </div>
+
+        <div class="user-img-field">
+          <strong>CNIC Front</strong><br>
+          {% if user.cnic_front_image_url %}
+            <img src="{{ user.cnic_front_image_url }}" class="user-img" alt="CNIC Front">
+          {% else %}
+            <span>No image</span>
+          {% endif %}
+        </div>
+        <div class="user-img-field">
+          <strong>CNIC Back</strong><br>
+          {% if user.cnic_back_image_url %}
+            <img src="{{ user.cnic_back_image_url }}" class="user-img" alt="CNIC Back">
+          {% else %}
+            <span>No image</span>
+          {% endif %}
+        </div>
+        <div class="user-img-field">
+          <strong>License Front</strong><br>
+          {% if user.driving_license_front_url %}
+            <img src="{{ user.driving_license_front_url }}" class="user-img" alt="License Front">
+          {% else %}
+            <span>No image</span>
+          {% endif %}
+        </div>
+        <div class="user-img-field">
+          <strong>License Back</strong><br>
+          {% if user.driving_license_back_url %}
+            <img src="{{ user.driving_license_back_url }}" class="user-img" alt="License Back">
+          {% else %}
+            <span>No image</span>
+          {% endif %}
+        </div>
+
+        <div class="user-text-field"><strong>Name:</strong><br>{{ user.name }}</div>
+        <div class="user-text-field"><strong>Username:</strong><br>{{ user.username }}</div>
+        <div class="user-text-field"><strong>Email:</strong><br>{{ user.email }}</div>
+        <div class="user-text-field"><strong>Phone:</strong><br>{{ user.phone_no }}</div>
+        <div class="user-text-field"><strong>Address:</strong><br>{{ user.address }}</div>
+        <div class="user-text-field"><strong>CNIC No:</strong><br>{{ user.cnic_no }}</div>
+        <div class="user-text-field"><strong>Gender:</strong><br>{{ user.gender }}</div>
+        <div class="user-text-field"><strong>Driving License No:</strong><br>{{ user.driving_license_no }}</div>
+        <div class="user-text-field"><strong>Account No:</strong><br>{{ user.accountno }}</div>
+        <div class="user-text-field"><strong>IBAN:</strong><br>{{ user.iban }}</div>
+        <div class="user-text-field"><strong>Bank Name:</strong><br>{{ user.bankname }}</div>
+        <div class="user-text-field"><strong>Driver Rating:</strong><br>{{ user.driver_rating|default:'-' }}</div>
+        <div class="user-text-field"><strong>Passenger Rating:</strong><br>{{ user.passenger_rating|default:'-' }}</div>
+        <div class="user-text-field"><strong>Created At:</strong><br>{{ user.created_at|date:'Y-m-d H:i' }}</div>
+        <div class="user-text-field"><strong>Updated At:</strong><br>{{ user.updated_at|date:'Y-m-d H:i' }}</div>
+
+        <div class="user-text-field" style="width: 100%;">
+          <strong>Emergency Contact</strong><br>
+          {% if emergency_contact %}
+            {{ emergency_contact.name }} ({{ emergency_contact.relation }})<br>
+            {{ emergency_contact.email }}<br>
+            {{ emergency_contact.phone_no }}
+          {% else %}
+            -
+          {% endif %}
+        </div>
+      </div>
+
+      <form id="statusForm" method="post" action="{% url 'administration:update_user_status' user_id %}" class="status-form">
+        {% csrf_token %}
+        <label>Status:
+          <select name="status" id="statusSelect">
+            <option value="PENDING" {% if user.status == 'PENDING' %}selected{% endif %}>PENDING</option>
+            <option value="VERIFIED" {% if user.status == 'VERIFIED' %}selected{% endif %}>VERIFIED</option>
+            <option value="REJECTED" {% if user.status == 'REJECTED' %}selected{% endif %}>REJECTED</option>
+            <option value="BANNED" {% if user.status == 'BANNED' %}selected{% endif %}>BANNED</option>
+          </select>
+        </label>
+        <div>
+          <label for="rejection_reason">Rejection Reason:</label>
+          <textarea name="rejection_reason" id="rejection_reason" rows="3">{% if user.rejection_reason %}{{ user.rejection_reason }}{% endif %}</textarea>
+        </div>
+        <button type="submit">Update Status</button>
+      </form>
+
+      <div style="margin-top: 14px;">
+        <a href="{% url 'administration:user_support_chat' user.id %}">Open Support Chat</a>
+      </div>
+    </div>
+  </main>
+{% endblock %}

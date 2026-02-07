@@ -1,0 +1,72 @@
+{% extends 'administration/base.html' %}
+
+{% block title %}SOS Incident #{{ incident.id }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>SOS Incident #{{ incident.id }}</h1>
+  <p class="page-subtitle">Status: <strong>{{ incident.status }}</strong></p>
+</div>
+
+{% if incident.trip %}
+  <div style="margin-bottom:12px;">
+    <a href="{% url 'administration:admin_trip_detail' trip_pk=incident.trip.id %}">
+      <button type="button">Open Trip Details</button>
+    </a>
+  </div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">
+    <h2>Details</h2>
+  </div>
+  <div class="card-body">
+    <table class="styled-table">
+      <tbody>
+        <tr><th>ID</th><td>{{ incident.id }}</td></tr>
+        <tr><th>Created At</th><td>{{ incident.created_at }}</td></tr>
+        <tr><th>User</th><td>{% if incident.actor %}{{ incident.actor.name }} (id={{ incident.actor.id }}){% else %}{% endif %}</td></tr>
+        <tr><th>Role</th><td>{{ incident.role }}</td></tr>
+        <tr><th>Trip</th><td>{% if incident.trip %}{{ incident.trip.trip_id }}{% else %}{% endif %}</td></tr>
+        <tr><th>Booking</th><td>{% if incident.booking %}{{ incident.booking.id }}{% else %}{% endif %}</td></tr>
+        <tr><th>Latitude</th><td>{{ incident.latitude }}</td></tr>
+        <tr><th>Longitude</th><td>{{ incident.longitude }}</td></tr>
+        <tr><th>Accuracy</th><td>{{ incident.accuracy }}</td></tr>
+        <tr><th>Note</th><td>{% if incident.note %}{{ incident.note }}{% else %}{% endif %}</td></tr>
+        <tr><th>Audit Event</th><td>{% if incident.audit_event %}{{ incident.audit_event.id }}{% else %}{% endif %}</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <div class="card-header">
+    <h2>Resolution</h2>
+  </div>
+  <div class="card-body">
+    <table class="styled-table">
+      <tbody>
+        <tr><th>Status</th><td><strong>{{ incident.status }}</strong></td></tr>
+        <tr><th>Resolved At</th><td>{% if incident.resolved_at %}{{ incident.resolved_at }}{% else %}{% endif %}</td></tr>
+        <tr><th>Resolved By</th><td>{% if incident.resolved_by %}{{ incident.resolved_by.username }}{% else %}{% endif %}</td></tr>
+        <tr><th>Resolved Note</th><td>{% if incident.resolved_note %}{{ incident.resolved_note }}{% else %}{% endif %}</td></tr>
+      </tbody>
+    </table>
+
+    {% if incident.status != 'RESOLVED' %}
+      <form method="post" action="{% url 'administration:sos_incident_resolve' incident.id %}" style="margin-top:12px;">
+        {% csrf_token %}
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <input type="text" name="resolved_note" placeholder="Resolution note (optional)" style="min-width:260px; padding:10px; border:1px solid #e1e8f0; border-radius:10px;" />
+          <button class="btn" type="submit">Mark Resolved</button>
+          <a class="btn" href="{% url 'administration:sos_dashboard' %}">Back</a>
+        </div>
+      </form>
+    {% else %}
+      <div style="margin-top:12px;">
+        <a class="btn" href="{% url 'administration:sos_dashboard' %}">Back</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

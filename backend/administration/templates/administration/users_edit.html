@@ -1,0 +1,158 @@
+{% extends 'administration/base.html' %}
+{% load static %}
+
+{% block title %}Edit User{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">Edit User</h1>
+    {% if error %}
+      <div class="error" style="color: red; margin-bottom: 1em;">{{ error }}</div>
+    {% endif %}
+    <div id="formError" style="color:red;margin-bottom:1em;"></div>
+    <form id="userEditForm" method="post" action="{% url 'administration:submit_user_edit' user.id %}" enctype="multipart/form-data" class="user-edit-form">
+      {% csrf_token %}
+      <div class="form-row"><label>Password:</label><input type="password" name="password" id="password" placeholder="Leave blank to keep current password"></div>
+      <div class="form-row"><label>Name:</label><input type="text" name="name" id="name" value="{{ user.name }}"></div>
+      <div class="form-row"><label>Username:</label><input type="text" name="username" id="username" value="{{ user.username }}"></div>
+      <div class="form-row"><label>Email:</label><input type="email" name="email" id="email" value="{{ user.email }}"></div>
+      <div class="form-row"><label>Address:</label><input type="text" name="address" id="address" value="{{ user.address }}"></div>
+      <div class="form-row"><label>Phone No:</label><input type="text" name="phone_no" id="phone_no" value="{{ user.phone_no }}"></div>
+      <div class="form-row"><label>Gender:</label>
+        <select name="gender" id="genderSelect">
+          <option value="male" {% if user.gender == 'male' %}selected{% endif %}>Male</option>
+          <option value="female" {% if user.gender == 'female' %}selected{% endif %}>Female</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Status:</label>
+        <select name="status" id="statusSelect">
+          <option value="PENDING" {% if user.status == 'PENDING' %}selected{% endif %}>PENDING</option>
+          <option value="VERIFIED" {% if user.status == 'VERIFIED' %}selected{% endif %}>VERIFIED</option>
+          <option value="REJECTED" {% if user.status == 'REJECTED' %}selected{% endif %}>REJECTED</option>
+          <option value="BANNED" {% if user.status == 'BANNED' %}selected{% endif %}>BANNED</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Driver Rating:</label><input type="number" step="0.01" name="driver_rating" id="driver_rating" value="{{ user.driver_rating }}"></div>
+      <div class="form-row"><label>Passenger Rating:</label><input type="number" step="0.01" name="passenger_rating" id="passenger_rating" value="{{ user.passenger_rating }}"></div>
+      <div class="form-row"><label>CNIC No:</label><input type="text" name="cnic_no" id="cnic_no" value="{{ user.cnic_no }}"></div>
+      <div class="form-row"><label>Driving License No:</label><input type="text" name="driving_license_no" id="driving_license_no" value="{{ user.driving_license_no }}"></div>
+      <div class="form-row"><label>Account No:</label><input type="text" name="accountno" id="accountno" value="{{ user.accountno }}"></div>
+      <div class="form-row"><label>IBAN:</label><input type="text" name="iban" id="iban" value="{{ user.iban }}"></div>
+      <div class="form-row"><label>Bank Name:</label><input type="text" name="bankname" id="bankname" value="{{ user.bankname }}"></div>
+
+      <div class="form-row"><label>Emergency Contact Name:</label><input type="text" name="emergency_name" value="{{ emergency_contact.name|default_if_none:'' }}"></div>
+      <div class="form-row"><label>Emergency Relation:</label><input type="text" name="emergency_relation" value="{{ emergency_contact.relation|default_if_none:'' }}"></div>
+      <div class="form-row"><label>Emergency Email:</label><input type="email" name="emergency_email" value="{{ emergency_contact.email|default_if_none:'' }}"></div>
+      <div class="form-row"><label>Emergency Phone (10-15 digits):</label><input type="text" name="emergency_phone_no" value="{{ emergency_contact.phone_no|default_if_none:'' }}"></div>
+
+      <div class="form-row"><label>Account QR:</label><img id="accountqr_img" src="" alt="Account QR" style="max-width:200px;display:none;"><input type="file" name="accountqr" accept="image/*"></div>
+      <div class="form-row"><label>Profile Photo:</label><img id="profile_photo_img" src="" alt="Profile Photo" style="max-width:200px;display:none;"><input type="file" name="profile_photo" accept="image/*"></div>
+      <div class="form-row"><label>Live Photo:</label><img id="live_photo_img" src="" alt="Live Photo" style="max-width:200px;display:none;"><input type="file" name="live_photo" accept="image/*"></div>
+      <div class="form-row"><label>CNIC Front Image:</label><img id="cnic_front_image_img" src="" alt="CNIC Front" style="max-width:200px;display:none;"><input type="file" name="cnic_front_image" accept="image/*"></div>
+      <div class="form-row"><label>CNIC Back Image:</label><img id="cnic_back_image_img" src="" alt="CNIC Back" style="max-width:200px;display:none;"><input type="file" name="cnic_back_image" accept="image/*"></div>
+      <div class="form-row"><label>Driving License Front:</label><img id="driving_license_front_img" src="" alt="License Front" style="max-width:200px;display:none;"><input type="file" name="driving_license_front" accept="image/*"></div>
+      <div class="form-row"><label>Driving License Back:</label><img id="driving_license_back_img" src="" alt="License Back" style="max-width:200px;display:none;"><input type="file" name="driving_license_back" accept="image/*"></div>
+      <div class="form-row"><button type="submit">Save Changes</button></div>
+    </form>
+  </main>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+  let existingImages = {}; // Store existing images info
+  
+  fetch(`/administration/users/{{ user.id }}/view/api/`)
+    .then(r => r.json())
+    .then(u => {
+      // Store existing images info (using *_url fields)
+      existingImages = {
+        driving_license_front: !!u.driving_license_front_url,
+        driving_license_back: !!u.driving_license_back_url
+      };
+      
+      // Show current images if available (prefer *_url fields)
+      if (u.accountqr_url) {
+        const img = document.getElementById('accountqr_img');
+        img.src = u.accountqr_url;
+        img.style.display = 'block';
+      }
+      if (u.profile_photo_url) {
+        const img = document.getElementById('profile_photo_img');
+        img.src = u.profile_photo_url;
+        img.style.display = 'block';
+      }
+      if (u.live_photo_url) {
+        const img = document.getElementById('live_photo_img');
+        img.src = u.live_photo_url;
+        img.style.display = 'block';
+      }
+      if (u.cnic_front_image_url) {
+        const img = document.getElementById('cnic_front_image_img');
+        img.src = u.cnic_front_image_url;
+        img.style.display = 'block';
+      }
+      if (u.cnic_back_image_url) {
+        const img = document.getElementById('cnic_back_image_img');
+        img.src = u.cnic_back_image_url;
+        img.style.display = 'block';
+      }
+      if (u.driving_license_front_url) {
+        const img = document.getElementById('driving_license_front_img');
+        img.src = u.driving_license_front_url;
+        img.style.display = 'block';
+      }
+      if (u.driving_license_back_url) {
+        const img = document.getElementById('driving_license_back_img');
+        img.src = u.driving_license_back_url;
+        img.style.display = 'block';
+      }
+    })
+    .catch(err => {
+      // Optionally show error
+      console.error('Error loading user:', err);
+    });
+    // Client-side validation
+    document.getElementById('userEditForm').addEventListener('submit', function(e) {
+      let errors = [];
+      const form = e.target;
+      const name = form.name.value.trim();
+      const username = form.username.value.trim();
+      const email = form.email.value.trim();
+      const password = form.password.value;
+      const phone = form.phone_no.value.trim();
+      const cnic = form.cnic_no.value.trim();
+      const accountno = form.accountno.value.trim();
+      const iban = form.iban.value.trim();
+      const bankname = form.bankname.value.trim();
+      const licenseNo = form.driving_license_no.value.trim();
+      const licenseFront = form.driving_license_front.files[0];
+      const licenseBack = form.driving_license_back.files[0];
+      // Required fields
+      if (!name) errors.push('Name is required.');
+      if (!username) errors.push('Username is required.');
+      if (!email) errors.push('Email is required.');
+      // Email format
+      if (email && !/^\S+@\S+\.\S+$/.test(email)) errors.push('Invalid email format.');
+      // Password complexity (if filled)
+      if (password && !/(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}/.test(password)) {
+        errors.push('Password must be at least 8 characters and contain uppercase, lowercase, digit, and special character.');
+      }
+      // Phone number format
+      if (phone && !/^\+\d{10,15}$/.test(phone)) errors.push('Phone number must be in international format, e.g. +923001234567.');
+      // CNIC format
+      if (cnic && !/^\d{5}-\d{7}-\d{1}$/.test(cnic)) errors.push('CNIC must be in the format 36603-0269853-9.');
+      // License images required if license no (only if images don't already exist)
+      if (licenseNo) {
+        const hasFrontImage = licenseFront || existingImages.driving_license_front;
+        const hasBackImage = licenseBack || existingImages.driving_license_back;
+        if (!hasFrontImage || !hasBackImage) {
+          errors.push('Both front and back images of the driving license are required if license number is provided.');
+        }
+      }
+      if (errors.length) {
+        document.getElementById('formError').innerText = errors.join('\n');
+        e.preventDefault();
+      }
+    });
+  </script>
+{% endblock %}

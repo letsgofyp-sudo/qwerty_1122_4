@@ -1,0 +1,50 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}Admin{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'administration/style.css' %}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="admin-body">
+  <input id="admin-nav-toggle" class="admin-nav-toggle" type="checkbox" />
+
+  <header class="admin-header">
+    <div class="admin-header-left">
+      <label class="admin-burger" for="admin-nav-toggle" aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </label>
+      <a class="admin-brand" href="{% url 'administration:admin_view' %}">RideShare Admin</a>
+    </div>
+
+    <div class="admin-header-right">
+      <a class="admin-toplink" href="{% url 'administration:logout_view' %}">Logout</a>
+    </div>
+  </header>
+
+  <aside class="admin-sidebar">
+    <nav class="admin-nav">
+      <a class="admin-nav-link" href="{% url 'administration:admin_view' %}">Dashboard</a>
+      <a class="admin-nav-link" href="{% url 'administration:rides_dashboard' %}">Rides</a>
+      <a class="admin-nav-link" href="{% url 'administration:sos_dashboard' %}">SOS Incidents</a>
+      <a class="admin-nav-link" href="{% url 'administration:user_list' %}">Users</a>
+      <a class="admin-nav-link" href="{% url 'administration:change_requests_list' %}">Change Requests</a>
+      <a class="admin-nav-link" href="{% url 'administration:guest_list' %}">Guest Support</a>
+      <a class="admin-nav-link" href="{% url 'administration:analytics_view' %}">Analytics</a>
+      <a class="admin-nav-link" href="{% url 'administration:settings_view' %}">Settings</a>
+    </nav>
+  </aside>
+
+  <main class="admin-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <label class="admin-overlay" for="admin-nav-toggle" aria-label="Close navigation"></label>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

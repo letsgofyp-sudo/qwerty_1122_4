@@ -1,0 +1,71 @@
+{% extends 'administration/base.html' %}
+{% load static %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">Settings</h1>
+    <div class="user-detail-card">
+      <div class="tab-bar">
+        <button type="button" class="tab-button active" id="tab-general" onclick="switchSection('general')">General</button>
+        <button type="button" class="tab-button" id="tab-roles" onclick="switchSection('roles')">Roles</button>
+      </div>
+
+      <section id="general">
+        <h2 style="margin-bottom:12px;">General Settings</h2>
+        <div class="user-fields" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr));">
+          <div class="user-text-field">
+            <strong>Site name</strong><br>
+            <input type="text" value="RideShare Admin" style="width:100%; padding:8px; margin-top:8px;">
+          </div>
+          <div class="user-text-field">
+            <strong>Signup</strong><br>
+            <label style="display:inline-flex; gap:8px; align-items:center; margin-top:10px;">
+              <input type="checkbox" checked>
+              Enable user signup
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section id="roles" style="display:none">
+        <h2 style="margin-bottom:12px;">Roles Management</h2>
+        <div class="table-container">
+          <table class="styled-table">
+            <thead>
+              <tr><th>Role</th><th>Permissions</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Admin</td><td><label><input type="checkbox" checked> Manage users</label></td></tr>
+              <tr><td>Driver</td><td><label><input type="checkbox"> View rides</label></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    function switchSection(id){
+      const sections = ['general','roles'];
+      sections.forEach(s => {
+        const el = document.getElementById(s);
+        if (el) el.style.display = (s === id ? 'block' : 'none');
+      });
+      const g = document.getElementById('tab-general');
+      const r = document.getElementById('tab-roles');
+      if (g && r) {
+        if (id === 'general') {
+          g.classList.add('active');
+          r.classList.remove('active');
+        } else {
+          r.classList.add('active');
+          g.classList.remove('active');
+        }
+      }
+    }
+  </script>
+{% endblock %}

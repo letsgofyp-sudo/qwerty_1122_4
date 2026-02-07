@@ -1,0 +1,114 @@
+{% extends 'administration/base.html' %}
+{% load static %}
+
+{% block title %}Change Request {{ cr.id }}{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">Change Request #{{ cr.id }}</h1>
+
+    {% if error %}
+      <div class="alert" style="margin-bottom: 12px; color: #b00020;">
+        {{ error }}
+      </div>
+    {% endif %}
+
+    <div class="user-detail-card" style="margin-bottom: 16px;">
+      <div class="user-fields">
+        <div class="user-text-field"><strong>Status:</strong><br>{{ cr.status }}</div>
+        <div class="user-text-field"><strong>Entity:</strong><br>{{ cr.entity_type }}</div>
+        <div class="user-text-field"><strong>Created At:</strong><br>{{ cr.created_at|date:'Y-m-d H:i' }}</div>
+        <div class="user-text-field"><strong>Reviewed At:</strong><br>{{ cr.reviewed_at|date:'Y-m-d H:i'|default:'-' }}</div>
+
+        <div class="user-text-field"><strong>User:</strong><br>
+          {% if cr.user %}
+            {{ cr.user.name }} ({{ cr.user.id }})
+          {% else %}
+            -
+          {% endif %}
+        </div>
+
+        <div class="user-text-field"><strong>Vehicle:</strong><br>
+          {% if cr.vehicle %}
+            {{ cr.vehicle.plate_number|default:'-' }} ({{ cr.vehicle.id }})
+          {% else %}
+            -
+          {% endif %}
+        </div>
+
+        <div class="user-text-field"><strong>Review Notes:</strong><br>{{ cr.review_notes|default:'-' }}</div>
+      </div>
+    </div>
+
+    <h2 class="page-title" style="font-size: 18px;">Old vs New</h2>
+    <div class="table-container" style="margin-bottom: 16px;">
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Old</th>
+            <th>New</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in compare_rows %}
+            <tr>
+              <td>{{ row.field }}</td>
+              <td>
+                {% if row.field|lower|slice:"-4:" == "_url" %}
+                  {% if row.old %}
+                    <img src="{{ row.old }}" class="user-img" alt="Old {{ row.field }}">
+                  {% else %}
+                    -
+                  {% endif %}
+                {% else %}
+                  {{ row.old|default:'-' }}
+                {% endif %}
+              </td>
+              <td>
+                {% if row.field|lower|slice:"-4:" == "_url" %}
+                  {% if row.new %}
+                    <img src="{{ row.new }}" class="user-img" alt="New {{ row.field }}">
+                  {% else %}
+                    -
+                  {% endif %}
+                {% else %}
+                  {{ row.new|default:'-' }}
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="3">No fields to compare.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="user-detail-card">
+      <form method="post">
+        {% csrf_token %}
+        <div class="user-fields">
+          <div class="user-text-field" style="width: 100%;">
+            <strong>Admin Notes</strong><br>
+            <textarea name="review_notes" rows="3" style="width: 100%;"></textarea>
+          </div>
+        </div>
+
+        {% if cr.status == 'PENDING' %}
+          <button type="submit" name="action" value="approve">Approve</button>
+          <button type="submit" name="action" value="reject" style="margin-left: 12px;">Reject</button>
+        {% else %}
+          <div style="margin-top: 8px;">
+            This request is already {{ cr.status }}.
+          </div>
+        {% endif %}
+      </form>
+    </div>
+
+    <div style="margin-top: 16px;">
+      <a href="{% url 'administration:change_requests_list' %}">Back to list</a>
+    </div>
+  </main>
+{% endblock %}

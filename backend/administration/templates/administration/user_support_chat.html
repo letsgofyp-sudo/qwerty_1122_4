@@ -1,0 +1,77 @@
+{% extends 'administration/base.html' %}
+
+{% block title %}Support Chat{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">Support Chat (Admin)</h1>
+
+    <div class="user-detail-card">
+      <div class="user-fields">
+        <div class="user-text-field"><strong>User:</strong><br>{{ user.name }} (ID: {{ user.id }})</div>
+        <div class="user-text-field"><strong>Email:</strong><br>{{ user.email }}</div>
+        <div class="user-text-field"><strong>Phone:</strong><br>{{ user.phone_no }}</div>
+      </div>
+
+      <hr style="margin: 1.5em 0;" />
+
+      <h2>Admin Thread</h2>
+
+      {% if error %}
+        <div style="background:#ffe3e3;border:1px solid #ffb5b5;padding:10px;border-radius:8px;margin-bottom:12px;">
+          {{ error }}
+        </div>
+      {% endif %}
+
+      <div class="chat-container">
+        {% if messages %}
+          {% for msg in messages %}
+            <div class="chat-message msg-row {% if msg.sender_type == 'ADMIN' %}from-driver{% else %}from-passenger{% endif %}">
+              <div class="chat-meta">
+                <span>{{ msg.created_at|date:'Y-m-d H:i' }}</span>
+                <span>|</span>
+                <span>{{ msg.sender_type }}</span>
+              </div>
+              <div class="chat-text">{{ msg.message_text }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p>No messages yet.</p>
+        {% endif %}
+      </div>
+
+      <hr style="margin: 1.5em 0;" />
+
+      <form method="post" action="{% url 'administration:user_support_chat' user.id %}">
+        {% csrf_token %}
+        <label for="message_text"><strong>Reply as Admin</strong></label>
+        <textarea id="message_text" name="message_text" rows="3" style="width:100%;margin-top:8px;" placeholder="Type your reply..."></textarea>
+        <div style="margin-top:10px; display:flex; gap:10px;">
+          <button type="submit">Send Reply</button>
+          <a href="{% url 'administration:user_detail' user.id %}" style="align-self:center;">Back to User</a>
+        </div>
+      </form>
+
+      <hr style="margin: 1.5em 0;" />
+
+      <h2>Bot Thread</h2>
+
+      <div class="chat-container">
+        {% if bot_messages %}
+          {% for msg in bot_messages %}
+            <div class="chat-message msg-row {% if msg.sender_type == 'BOT' %}from-driver{% else %}from-passenger{% endif %}">
+              <div class="chat-meta">
+                <span>{{ msg.created_at|date:'Y-m-d H:i' }}</span>
+                <span>|</span>
+                <span>{{ msg.sender_type }}</span>
+              </div>
+              <div class="chat-text">{{ msg.message_text }}</div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <p>No bot messages yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </main>
+{% endblock %}

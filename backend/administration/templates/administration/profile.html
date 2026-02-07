@@ -1,0 +1,30 @@
+{% extends 'administration/base.html' %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">Profile</h1>
+    <div class="user-detail-card">
+      <nav class="tab-bar">
+        <button type="button" class="tab-button active" onclick="showTab('info')">Profile</button>
+        <button type="button" class="tab-button" onclick="showTab('activity')">Activity</button>
+        <button type="button" class="tab-button" onclick="showTab('settings')">Settings</button>
+      </nav>
+      <section id="info" style="margin-top:14px;"><h2>Profile Info</h2><p>Email: alice@example.com</p><p>Role: Rider</p></section>
+      <section id="activity" style="display:none; margin-top:14px;"><h2>Recent Activity</h2><ul><li>Logged in 2 hrs ago</li><li>Booked ride yesterday</li></ul></section>
+      <section id="settings" style="display:none; margin-top:14px;"><h2>Settings</h2><label><input type="checkbox" checked> Email notifications</label></section>
+    </div>
+  </main>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    function showTab(id){
+      ['info','activity','settings'].forEach(s => {
+        const el = document.getElementById(s);
+        if (el) el.style.display = (s === id ? 'block' : 'none');
+      });
+    }
+  </script>
+{% endblock %}

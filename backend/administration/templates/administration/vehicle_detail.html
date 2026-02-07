@@ -1,0 +1,83 @@
+{% extends 'administration/base.html' %}
+{% load static %}
+
+{% block title %}Vehicle Detail{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">Vehicles for {{ user.name }}</h1>
+    <div class="user-detail-card">
+      <p>
+        <strong>Owner:</strong> {{ user.name }} (ID: {{ user.id }})
+        - <a href="{% url 'administration:user_detail' user_id=user.id %}">Back to User Detail</a>
+      </p>
+      <p style="margin-top:1em;">
+        <a href="{% url 'administration:vehicle_add' user_id=user_id %}">+ Add Vehicle</a>
+      </p>
+
+      {% if vehicles %}
+        <div class="vehicle-list">
+          {% for v in vehicles %}
+            <div class="vehicle-card">
+              <div class="vehicle-main-row">
+                <div class="vehicle-main-item"><strong>Plate:</strong> {{ v.plate_number }}</div>
+                <div class="vehicle-main-item"><strong>Company:</strong> {{ v.company_name }}</div>
+                <div class="vehicle-main-item"><strong>Model:</strong> {{ v.model_number }}</div>
+                <div class="vehicle-main-item"><strong>Type:</strong> {{ v.get_vehicle_type_display }}</div>
+                <div class="vehicle-main-item"><strong>Seats:</strong> {{ v.seats|default:'-' }}</div>
+                <div class="vehicle-main-item"><strong>Color:</strong> {{ v.color }}</div>
+                <div class="vehicle-main-item"><strong>Fuel:</strong> {{ v.fuel_type }}</div>
+                <div class="vehicle-main-item"><strong>Status:</strong> {{ v.status }}</div>
+              </div>
+              <div class="vehicle-images-row">
+                <div class="user-img-field">
+                  <strong>Front</strong><br>
+                  {% if v.photo_front_url %}
+                    <img src="{{ v.photo_front_url }}" class="user-img" alt="Front">
+                  {% else %}
+                    <span>No image</span>
+                  {% endif %}
+                </div>
+                <div class="user-img-field">
+                  <strong>Back</strong><br>
+                  {% if v.photo_back_url %}
+                    <img src="{{ v.photo_back_url }}" class="user-img" alt="Back">
+                  {% else %}
+                    <span>No image</span>
+                  {% endif %}
+                </div>
+                <div class="user-img-field">
+                  <strong>Documents</strong><br>
+                  {% if v.documents_image_url %}
+                    <img src="{{ v.documents_image_url }}" class="user-img" alt="Documents">
+                  {% else %}
+                    <span>No image</span>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="vehicle-actions">
+                <a href="{% url 'administration:vehicle_edit' user_id=user_id vehicle_id=v.id %}">Edit</a>
+                <form method="post" action="{% url 'administration:vehicle_update_status' user_id=user_id vehicle_id=v.id %}" style="display:inline; margin-left: 10px;" onsubmit="return confirm('Verify this vehicle?');">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="VERIFIED">
+                  <button type="submit">Verify</button>
+                </form>
+                <form method="post" action="{% url 'administration:vehicle_update_status' user_id=user_id vehicle_id=v.id %}" style="display:inline; margin-left: 10px;" onsubmit="return confirm('Reject this vehicle?');">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="REJECTED">
+                  <button type="submit">Reject</button>
+                </form>
+                <form method="post" action="{% url 'administration:vehicle_delete' user_id=user_id vehicle_id=v.id %}" style="display:inline" onsubmit="return confirm('Delete this vehicle?');">
+                  {% csrf_token %}
+                  <button type="submit">Delete</button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p style="margin-top:1.5em;">No vehicles registered for this user yet.</p>
+      {% endif %}
+    </div>
+  </main>
+{% endblock %}

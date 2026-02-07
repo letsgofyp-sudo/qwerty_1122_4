@@ -1,0 +1,186 @@
+{% extends 'administration/base.html' %}
+{% load static %}
+
+{% block title %}SOS Live Tracking{% endblock %}
+
+{% block head_extra %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    #sosMap { height: 520px; border-radius: 8px; overflow:hidden; margin-top: 12px; }
+
+    .sos-marker {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #e74c3c;
+      border: 3px solid #ffffff;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+      position: relative;
+    }
+    .sos-marker:after {
+      content: 'SOS';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 10px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    .map-summary-box {
+      background:rgba(255,255,255,0.95);
+      border-radius:8px;
+      box-shadow:0 1px 4px rgba(0,0,0,0.1);
+      padding:10px 14px;
+      font-size:0.95rem;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">SOS Live Tracking</h1>
+
+    <div class="user-detail-card">
+      <div class="user-fields">
+        <div class="user-text-field"><strong>Status:</strong><br>{{ incident.status }}</div>
+        <div class="user-text-field"><strong>Triggered At:</strong><br>{{ incident.created_at|date:'Y-m-d H:i' }}</div>
+        <div class="user-text-field"><strong>Role:</strong><br>{{ incident.role }}</div>
+        <div class="user-text-field"><strong>Trip:</strong><br>{{ incident.trip.trip_id }}</div>
+        <div class="user-text-field"><strong>Note:</strong><br>{{ incident.note|default:'-' }}</div>
+        <div class="user-text-field"><strong>Share Expires:</strong><br>{{ token.expires_at|date:'Y-m-d H:i'|default:'-' }}</div>
+      </div>
+
+      <div id="sosMap"></div>
+      <div class="map-summary">
+        <div class="map-summary-box">
+          <div id="liveRuntime"></div>
+          <div style="margin-top:6px; font-size:0.9rem; color:#6b7280;">
+            Shared view is privacy-preserving: only driver location and the SOS marker are shown.
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+{% endblock %}
+
+{% block scripts %}
+  {{ incident_data|json_script:"incidentData" }}
+  {{ trip_meta_data|json_script:"tripMetaData" }}
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    (function() {
+      const mapEl = document.getElementById('sosMap');
+      if (!mapEl) return;
+
+      const incident = JSON.parse(
+        (document.getElementById('incidentData')?.textContent || '{}')
+      );
+      const tripMeta = JSON.parse(
+        (document.getElementById('tripMetaData')?.textContent || '{}')
+      );
+
+      const map = L.map('sosMap');
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      const bounds = [];
+
+      function _sosIcon() {
+        return L.divIcon({
+          className: '',
+          html: '<div class="sos-marker"></div>',
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+        });
+      }
+
+      const sosPos = [Number(incident.lat), Number(incident.lng)];
+      if (!Number.isNaN(sosPos[0]) && !Number.isNaN(sosPos[1])) {
+        const sosMarker = L.marker(sosPos, { icon: _sosIcon() }).addTo(map);
+        const note = incident.note ? String(incident.note) : '-';
+        sosMarker.bindPopup(`<strong>SOS Triggered</strong><br/>${note}`);
+        bounds.push(sosPos);
+      }
+
+      const liveLayer = L.layerGroup().addTo(map);
+      let driverMarker = null;
+
+      async function fetchLiveState() {
+        const url = tripMeta.share_live_url;
+        if (!url) return null;
+        try {
+          const res = await fetch(url, { method: 'GET' });
+          const data = await res.json();
+          return data && data.success ? data : null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function renderLiveState(payload) {
+        if (!payload || !payload.live_state) return;
+        const live = payload.live_state;
+
+        const rtEl = document.getElementById('liveRuntime');
+        if (rtEl) {
+          const rt = payload.runtime || {};
+          const pieces = [];
+          if (rt.last_seen_seconds != null) {
+            pieces.push(`<div><strong>Last seen:</strong> ${Number(rt.last_seen_seconds)}s ago</div>`);
+          }
+          if (rt.speed_kph != null) {
+            pieces.push(`<div><strong>Speed:</strong> ${Number(rt.speed_kph).toFixed(1)} km/h</div>`);
+          }
+          rtEl.innerHTML = pieces.join('') || '<div>Waiting for live updates...</div>';
+        }
+
+        const actor = live.actor;
+        if (actor && actor.lat != null && actor.lng != null) {
+          const pos = [Number(actor.lat), Number(actor.lng)];
+          if (!driverMarker) {
+            driverMarker = L.circleMarker(pos, {
+              radius: 7,
+              color: '#2ecc71',
+              fillColor: '#2ecc71',
+              fillOpacity: 0.9
+            }).addTo(liveLayer);
+          } else {
+            driverMarker.setLatLng(pos);
+          }
+          driverMarker.bindPopup('<strong>Live location</strong>');
+          bounds.push(pos);
+        }
+
+        if (bounds.length) {
+          map.fitBounds(bounds, { padding: [20, 20] });
+        }
+      }
+
+      let polling = false;
+      async function poll() {
+        if (polling) return;
+        polling = true;
+        const payload = await fetchLiveState();
+        if (payload) {
+          renderLiveState(payload);
+        }
+        polling = false;
+      }
+
+      if (bounds.length) {
+        map.fitBounds(bounds, { padding: [20, 20] });
+      } else {
+        map.setView([30.3753, 69.3451], 5);
+      }
+
+      poll();
+      setInterval(poll, 3500);
+    })();
+  </script>
+{% endblock %}

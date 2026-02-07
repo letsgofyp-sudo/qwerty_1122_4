@@ -1,0 +1,23 @@
+{% extends 'administration/base.html' %}
+{% load static %}
+
+{% block title %}Guest Users{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">Guest Users</h1>
+    <div class="table-container">
+      <table id="guestsTable" class="styled-table">
+        <thead><tr><th>Username</th><th>Guest #</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </main>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    window.GUESTS_API = "{% url 'administration:api_guests' %}";
+  </script>
+  <script src="{% static 'administration/guests_list.js' %}"></script>
+{% endblock %}

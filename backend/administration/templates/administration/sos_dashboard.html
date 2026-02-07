@@ -1,0 +1,94 @@
+{% extends 'administration/base.html' %}
+
+{% block title %}SOS Incidents{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>SOS Incidents</h1>
+  <p class="page-subtitle">Open incidents require immediate attention.</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2>Open</h2>
+  </div>
+  <div class="card-body">
+    <table class="styled-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Time</th>
+          <th>User</th>
+          <th>Role</th>
+          <th>Trip</th>
+          <th>Booking</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in open_incidents %}
+          <tr>
+            <td>#{{ i.id }}</td>
+            <td>{{ i.created_at }}</td>
+            <td>{% if i.actor %}{{ i.actor.name }} ({{ i.actor.id }}){% else %}{% endif %}</td>
+            <td>{{ i.role }}</td>
+            <td>{% if i.trip %}{{ i.trip.trip_id }}{% else %}{% endif %}</td>
+            <td>{% if i.booking %}{{ i.booking.id }}{% else %}{% endif %}</td>
+            <td>{{ i.latitude }}, {{ i.longitude }}</td>
+            <td><strong>{{ i.status }}</strong></td>
+            <td><a class="btn" href="{% url 'administration:sos_incident_detail' i.id %}">View</a></td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="9" style="text-align:center;">No open SOS incidents.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <div class="card-header">
+    <h2>Resolved (recent)</h2>
+  </div>
+  <div class="card-body">
+    <table class="styled-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Time</th>
+          <th>User</th>
+          <th>Role</th>
+          <th>Trip</th>
+          <th>Status</th>
+          <th>Resolved At</th>
+          <th>Resolved By</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in resolved_incidents %}
+          <tr>
+            <td>#{{ i.id }}</td>
+            <td>{{ i.created_at }}</td>
+            <td>{% if i.actor %}{{ i.actor.name }} ({{ i.actor.id }}){% else %}{% endif %}</td>
+            <td>{{ i.role }}</td>
+            <td>{% if i.trip %}{{ i.trip.trip_id }}{% else %}{% endif %}</td>
+            <td>{{ i.status }}</td>
+            <td>{{ i.resolved_at }}</td>
+            <td>{% if i.resolved_by %}{{ i.resolved_by.username }}{% else %}{% endif %}</td>
+            <td><a class="btn" href="{% url 'administration:sos_incident_detail' i.id %}">View</a></td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="9" style="text-align:center;">No resolved incidents.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'administration/base.html' %}
+{% load static %}
+
+{% block title %}{% if is_new %}Add Vehicle{% else %}Edit Vehicle{% endif %}{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">{% if is_new %}Add Vehicle{% else %}Edit Vehicle{% endif %} for {{ user.name }}</h1>
+    {% if error %}
+      <div class="error" style="color:red;margin-bottom:1em;">{{ error }}</div>
+    {% endif %}
+    <form method="post" class="user-edit-form">
+      {% csrf_token %}
+      <div class="form-row"><label>Plate Number:</label><input type="text" name="plate_number" value="{{ vehicle.plate_number|default_if_none:'' }}" required></div>
+      <div class="form-row"><label>Company Name:</label><input type="text" name="company_name" value="{{ vehicle.company_name|default_if_none:'' }}"></div>
+      <div class="form-row"><label>Model Number:</label><input type="text" name="model_number" value="{{ vehicle.model_number|default_if_none:'' }}"></div>
+      <div class="form-row"><label>Variant:</label><input type="text" name="variant" value="{{ vehicle.variant|default_if_none:'' }}"></div>
+      <div class="form-row"><label>Vehicle Type:</label>
+        <select name="vehicle_type">
+          <option value="TW" {% if vehicle and vehicle.vehicle_type == 'TW' %}selected{% endif %}>Two Wheeler</option>
+          <option value="FW" {% if vehicle and vehicle.vehicle_type == 'FW' %}selected{% endif %}>Four Wheeler</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Seats (for Four Wheeler):</label><input type="number" name="seats" min="1" value="{{ vehicle.seats|default_if_none:'' }}"></div>
+      <div class="form-row"><label>Color:</label><input type="text" name="color" value="{{ vehicle.color|default_if_none:'' }}"></div>
+      <div class="form-row"><label>Fuel Type:</label>
+        <select name="fuel_type">
+          <option value="" {% if not vehicle or not vehicle.fuel_type %}selected{% endif %}>--</option>
+          <option value="Petrol" {% if vehicle and vehicle.fuel_type == 'Petrol' %}selected{% endif %}>Petrol</option>
+          <option value="Diesel" {% if vehicle and vehicle.fuel_type == 'Diesel' %}selected{% endif %}>Diesel</option>
+          <option value="CNG" {% if vehicle and vehicle.fuel_type == 'CNG' %}selected{% endif %}>CNG</option>
+          <option value="Electric" {% if vehicle and vehicle.fuel_type == 'Electric' %}selected{% endif %}>Electric</option>
+          <option value="Hybrid" {% if vehicle and vehicle.fuel_type == 'Hybrid' %}selected{% endif %}>Hybrid</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Front Photo:</label>
+        {% if vehicle and vehicle.photo_front_url %}
+          <img src="{{ vehicle.photo_front_url }}" class="user-img" alt="Front Photo">
+        {% else %}
+          <span>No image</span>
+        {% endif %}
+      </div>
+      <div class="form-row"><label>Back Photo:</label>
+        {% if vehicle and vehicle.photo_back_url %}
+          <img src="{{ vehicle.photo_back_url }}" class="user-img" alt="Back Photo">
+        {% else %}
+          <span>No image</span>
+        {% endif %}
+      </div>
+      <div class="form-row"><label>Documents Image:</label>
+        {% if vehicle and vehicle.documents_image_url %}
+          <img src="{{ vehicle.documents_image_url }}" class="user-img" alt="Documents Image">
+        {% else %}
+          <span>No image</span>
+        {% endif %}
+      </div>
+      <div class="form-row"><label>Engine Number:</label><input type="text" name="engine_number" value="{{ vehicle.engine_number|default_if_none:'' }}"></div>
+      <div class="form-row"><label>Chassis Number:</label><input type="text" name="chassis_number" value="{{ vehicle.chassis_number|default_if_none:'' }}"></div>
+      <div class="form-row"><label>Registration Date:</label><input type="date" name="registration_date" value="{{ vehicle.registration_date|date:'Y-m-d' }}"></div>
+      <div class="form-row"><label>Insurance Expiry:</label><input type="date" name="insurance_expiry" value="{{ vehicle.insurance_expiry|date:'Y-m-d' }}"></div>
+      <div class="form-row"><button type="submit">Save Vehicle</button></div>
+    </form>
+  </main>
+{% endblock %}

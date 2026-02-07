@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SOS Live Tracking</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #f6f7fb; color: #111827; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 18px; }
+    .card { background: #ffffff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 14px; }
+    .title { font-size: 20px; font-weight: 800; margin: 4px 0 12px; }
+    .grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+    @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .field { background: #f9fafb; border: 1px solid #eef2f7; border-radius: 10px; padding: 10px; }
+    .field strong { display: block; font-size: 12px; color: #374151; margin-bottom: 6px; }
+    .field div { font-size: 13px; }
+
+    .legend {
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #374151;
+    }
+    .legend span { display:inline-flex; align-items:center; gap:6px; }
+    .swatch { width: 16px; height: 4px; border-radius: 2px; }
+
+    #sosMap { height: 520px; border-radius: 10px; overflow:hidden; margin-top: 12px; }
+
+    .route-stop-marker {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 4px rgba(0,0,0,0.35);
+    }
+    .route-stop-start { background-color: #2ecc71; }
+    .route-stop-end { background-color: #e74c3c; }
+    .route-stop-mid { background-color: #e67e22; }
+
+    .sos-marker {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #e74c3c;
+      border: 3px solid #ffffff;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+      position: relative;
+    }
+    .sos-marker:after {
+      content: 'SOS';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 10px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    .hint {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top: 10px;
+    }
+    .btn {
+      display:inline-block;
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid #e5e7eb;
+      background:#ffffff;
+      color:#111827;
+      text-decoration:none;
+      font-size:13px;
+      font-weight:700;
+      box-shadow:0 1px 3px rgba(0,0,0,0.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="title">SOS Live Tracking</div>
+
+      <div class="grid">
+        <div class="field"><strong>Status</strong><div>{{ incident.status }}</div></div>
+        <div class="field"><strong>Triggered At</strong><div>{{ incident.created_at|date:'Y-m-d H:i' }}</div></div>
+        <div class="field"><strong>Role</strong><div>{{ incident.role }}</div></div>
+        <div class="field"><strong>Trip</strong><div>{{ incident.trip.trip_id }}</div></div>
+        <div class="field"><strong>Link Expires</strong><div>{{ token.expires_at|date:'Y-m-d H:i'|default:'-' }}</div></div>
+        <div class="field"><strong>Route</strong><div>{{ trip_public_data.route_name|default:'-' }}</div></div>
+        <div class="field"><strong>Departure</strong><div>{{ trip_public_data.departure_time|default:'-' }}</div></div>
+        <div class="field"><strong>Estimated Arrival</strong><div>{{ trip_public_data.estimated_arrival_time|default:'-' }}</div></div>
+        <div class="field"><strong>Vehicle</strong><div>{{ trip_public_data.vehicle.type|default:'-' }}</div></div>
+        <div class="field"><strong>Plate (masked)</strong><div>{{ trip_public_data.vehicle.plate_masked|default:'-' }}</div></div>
+      </div>
+
+      <div id="sosMap"></div>
+
+      <div class="legend">
+        <span><span class="swatch" style="background:#1f77b4"></span> Planned route (OSM)</span>
+        <span><span class="swatch" style="background:#8e44ad"></span> Actual traveled path</span>
+      </div>
+
+      <div class="actions">
+        <a id="gmapsLink" class="btn" href="#" target="_blank" rel="noopener noreferrer">Open in Google Maps</a>
+      </div>
+
+      <div id="liveRuntime" class="hint"></div>
+      <div class="hint">
+        Shared view is privacy-preserving: only the SOS marker, route, and triggering party live tracking are shown.
+      </div>
+    </div>
+  </div>
+
+  {{ incident_data|json_script:"incidentData" }}
+  {{ trip_meta_data|json_script:"tripMetaData" }}
+  {{ trip_public_data|json_script:"tripPublicData" }}
+  {{ route_stops_data|json_script:"routeStopsData" }}
+  {{ route_geometry_data|json_script:"routeGeometryData" }}
+  {{ driver_path_data|json_script:"driverPathData" }}
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    (function() {
+      const mapEl = document.getElementById('sosMap');
+      if (!mapEl) return;
+
+      const incident = JSON.parse(
+        (document.getElementById('incidentData')?.textContent || '{}')
+      );
+      const tripMeta = JSON.parse(
+        (document.getElementById('tripMetaData')?.textContent || '{}')
+      );
+      JSON.parse((document.getElementById('tripPublicData')?.textContent || '{}'));
+
+      const routeStops = JSON.parse(
+        (document.getElementById('routeStopsData')?.textContent || '[]')
+      );
+      const routeGeometry = JSON.parse(
+        (document.getElementById('routeGeometryData')?.textContent || '[]')
+      );
+      const driverPathSeed = JSON.parse(
+        (document.getElementById('driverPathData')?.textContent || '[]')
+      );
+
+      const map = L.map('sosMap');
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      const bounds = [];
+      let didFit = false;
+
+      function _sosIcon() {
+        return L.divIcon({
+          className: '',
+          html: '<div class="sos-marker"></div>',
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+        });
+      }
+
+      const sosPos = [Number(incident.lat), Number(incident.lng)];
+      if (!Number.isNaN(sosPos[0]) && !Number.isNaN(sosPos[1])) {
+        const gmaps = document.getElementById('gmapsLink');
+        if (gmaps) {
+          const q = `${Number(incident.lat)},${Number(incident.lng)}`;
+          gmaps.href = `https://www.google.com/maps?q=${encodeURIComponent(q)}`;
+        }
+        const sosMarker = L.marker(sosPos, { icon: _sosIcon() }).addTo(map);
+        const note = incident.note ? String(incident.note) : '-';
+        const createdAt = incident.created_at ? new Date(String(incident.created_at)).toLocaleString() : '-';
+        sosMarker.bindPopup(
+          `<strong>SOS Triggered</strong>` +
+          `<br/><strong>Time:</strong> ${createdAt}` +
+          `<br/><strong>Location:</strong> ${Number(incident.lat).toFixed(6)}, ${Number(incident.lng).toFixed(6)}` +
+          `<br/><strong>Note:</strong> ${note}`
+        );
+        bounds.push(sosPos);
+      }
+
+      function _routeStopIcon(cls) {
+        return L.divIcon({
+          className: `route-stop-marker ${cls}`,
+          iconSize: [16, 16],
+          iconAnchor: [8, 8]
+        });
+      }
+
+      // Planned route polyline (OSM geometry preferred)
+      const geometryPoints = Array.isArray(routeGeometry) ? routeGeometry.map(p => [p.lat, p.lng]) : [];
+      if (geometryPoints.length >= 2) {
+        L.polyline(geometryPoints, { color: '#1f77b4', weight: 4, opacity: 0.95 }).addTo(map);
+        geometryPoints.forEach(pt => bounds.push(pt));
+      } else if (Array.isArray(routeStops) && routeStops.length >= 2) {
+        const pts = routeStops.map(s => [s.lat, s.lng]);
+        L.polyline(pts, { color: '#1f77b4', weight: 4, opacity: 0.9 }).addTo(map);
+        pts.forEach(pt => bounds.push(pt));
+      }
+
+      // Route stops markers
+      if (Array.isArray(routeStops) && routeStops.length) {
+        routeStops.forEach((rs, idx) => {
+          if (!rs || rs.lat == null || rs.lng == null) return;
+          const isFirst = idx === 0;
+          const isLast = idx === routeStops.length - 1;
+          const cls = isFirst ? 'route-stop-start' : (isLast ? 'route-stop-end' : 'route-stop-mid');
+          const marker = L.marker([Number(rs.lat), Number(rs.lng)], { icon: _routeStopIcon(cls) }).addTo(map);
+          const name = rs.name || `Stop ${idx + 1}`;
+          marker.bindPopup(isFirst ? ('Route Start: ' + name) : (isLast ? ('Route End: ' + name) : name));
+          bounds.push([Number(rs.lat), Number(rs.lng)]);
+        });
+      }
+
+      const liveLayer = L.layerGroup().addTo(map);
+      let actorMarker = null;
+      let actualPathLine = null;
+
+      function _isSignalLost(payload) {
+        try {
+          const rt = payload && payload.runtime ? payload.runtime : {};
+          const lastSeen = rt.last_seen_seconds;
+          return typeof lastSeen === 'number' && lastSeen > 30;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      function renderDriverPath(points, forceRed) {
+        if (!Array.isArray(points) || points.length < 2) return;
+        const path = points
+          .filter(p => p && p.lat != null && p.lng != null)
+          .map(p => [Number(p.lat), Number(p.lng)]);
+        if (path.length < 2) return;
+        const color = forceRed ? '#e74c3c' : '#8e44ad';
+        if (!actualPathLine) {
+          actualPathLine = L.polyline(path, { color, weight: 4, opacity: 0.9 }).addTo(map);
+        } else {
+          actualPathLine.setLatLngs(path);
+          actualPathLine.setStyle({ color });
+        }
+        if (!didFit) {
+          path.forEach(pt => bounds.push(pt));
+        }
+      }
+
+      renderDriverPath(driverPathSeed, false);
+
+      async function fetchLiveState() {
+        const url = tripMeta.share_live_url;
+        if (!url) return null;
+        try {
+          const res = await fetch(url, { method: 'GET' });
+          const data = await res.json();
+          return data && data.success ? data : null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function renderLiveState(payload) {
+        if (!payload || !payload.live_state) return;
+        const live = payload.live_state;
+
+        const rtEl = document.getElementById('liveRuntime');
+        if (rtEl) {
+          const rt = payload.runtime || {};
+          const pieces = [];
+          if (rt.last_seen_seconds != null) {
+            pieces.push(`<div><strong>Last seen:</strong> ${Number(rt.last_seen_seconds)}s ago</div>`);
+          }
+          if (rt.speed_kph != null) {
+            pieces.push(`<div><strong>Speed:</strong> ${Number(rt.speed_kph).toFixed(1)} km/h</div>`);
+          }
+          rtEl.innerHTML = pieces.join('') || '<div>Waiting for live updates...</div>';
+        }
+
+        const actor = live.actor;
+        if (actor && actor.lat != null && actor.lng != null) {
+          const pos = [Number(actor.lat), Number(actor.lng)];
+          if (!actorMarker) {
+            actorMarker = L.circleMarker(pos, {
+              radius: 7,
+              color: '#2ecc71',
+              fillColor: '#2ecc71',
+              fillOpacity: 0.9
+            }).addTo(liveLayer);
+          } else {
+            actorMarker.setLatLng(pos);
+          }
+          actorMarker.bindPopup('<strong>Live location</strong>');
+          if (!didFit) bounds.push(pos);
+        }
+
+        if (live.driver_path) {
+          renderDriverPath(live.driver_path, _isSignalLost(payload));
+        }
+
+        if (!didFit && bounds.length) {
+          map.fitBounds(bounds, { padding: [20, 20] });
+          didFit = true;
+        }
+      }
+
+      let polling = false;
+      async function poll() {
+        if (polling) return;
+        polling = true;
+        const payload = await fetchLiveState();
+        if (payload) {
+          renderLiveState(payload);
+        }
+        polling = false;
+      }
+
+      if (bounds.length) {
+        map.fitBounds(bounds, { padding: [20, 20] });
+        didFit = true;
+      } else {
+        map.setView([30.3753, 69.3451], 5);
+      }
+
+      poll();
+      setInterval(poll, 3500);
+    })();
+  </script>
+</body>
+</html>

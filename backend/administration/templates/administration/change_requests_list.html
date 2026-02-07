@@ -1,0 +1,79 @@
+{% extends 'administration/base.html' %}
+{% load static %}
+
+{% block title %}Change Requests{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">Change Requests</h1>
+
+    <form method="get" class="status-form" style="margin-bottom: 16px;">
+      <label>Status:
+        <select name="status">
+          <option value="" {% if not status_filter %}selected{% endif %}>All</option>
+          <option value="PENDING" {% if status_filter == 'PENDING' %}selected{% endif %}>PENDING</option>
+          <option value="APPROVED" {% if status_filter == 'APPROVED' %}selected{% endif %}>APPROVED</option>
+          <option value="REJECTED" {% if status_filter == 'REJECTED' %}selected{% endif %}>REJECTED</option>
+        </select>
+      </label>
+
+      <label style="margin-left: 12px;">Entity:
+        <select name="entity_type">
+          <option value="" {% if not entity_filter %}selected{% endif %}>All</option>
+          <option value="USER_PROFILE" {% if entity_filter == 'USER_PROFILE' %}selected{% endif %}>USER_PROFILE</option>
+          <option value="VEHICLE" {% if entity_filter == 'VEHICLE' %}selected{% endif %}>VEHICLE</option>
+        </select>
+      </label>
+
+      <button type="submit" style="margin-left: 12px;">Filter</button>
+      <a href="{% url 'administration:change_requests_list' %}" style="margin-left: 12px;">Reset</a>
+    </form>
+
+    <div class="table-container">
+      <table class="styled-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Status</th>
+            <th>Entity</th>
+            <th>User</th>
+            <th>Vehicle</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cr in change_requests %}
+            <tr>
+              <td>{{ cr.id }}</td>
+              <td>{{ cr.status }}</td>
+              <td>{{ cr.entity_type }}</td>
+              <td>
+                {% if cr.user %}
+                  {{ cr.user.name }} ({{ cr.user.id }})
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>
+                {% if cr.vehicle %}
+                  {{ cr.vehicle.plate_number|default:'-' }} ({{ cr.vehicle.id }})
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td>{{ cr.created_at|date:'Y-m-d H:i' }}</td>
+              <td>
+                <a href="{% url 'administration:change_request_detail' cr.id %}">View</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7">No change requests found.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </main>
+{% endblock %}

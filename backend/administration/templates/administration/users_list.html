@@ -1,0 +1,24 @@
+{% extends 'administration/base.html' %}
+{% load static %}
+
+{% block title %}User List{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <a href="{% url 'administration:user_add' %}">add new user</a>
+    <h1 class="page-title">User List</h1>
+    <div class="table-container">
+      <table id="usersTable" class="styled-table">
+        <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </main>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    window.USERS_API = "{% url 'administration:api_users' %}";
+  </script>
+  <script src="{% static 'administration/users_list.js' %}"></script>
+{% endblock %}

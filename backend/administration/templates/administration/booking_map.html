@@ -1,0 +1,546 @@
+{% extends 'administration/base.html' %}
+{% load static %}
+
+{% block title %}Booking Map {{ booking.booking_id }}{% endblock %}
+
+{% block head_extra %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    #bookingMap { height: 420px; border-radius: 8px; overflow:hidden; margin-top: 12px; }
+
+    .avatar-marker {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .avatar-marker img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .avatar-fallback {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      background: #f0f3f6;
+      color: #2c3e50;
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    }
+
+    .driver-ring {
+      outline: 3px solid rgba(46, 204, 113, 0.9);
+      outline-offset: 1px;
+    }
+
+    .passenger-ring {
+      outline: 3px solid rgba(52, 152, 219, 0.9);
+      outline-offset: 1px;
+    }
+
+    .driver-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .driver-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: #2ecc71;
+    }
+
+    .pickup-fallback {
+      opacity: 0.85;
+    }
+
+    .map-summary-box {
+      background:rgba(255,255,255,0.95);
+      border-radius:8px;
+      box-shadow:0 1px 4px rgba(0,0,0,0.1);
+      padding:10px 14px;
+      font-size:0.95rem;
+    }
+
+    .sos-marker {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #e74c3c;
+      border: 3px solid #ffffff;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+      position: relative;
+    }
+    .sos-marker:after {
+      content: 'SOS';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 10px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">Booking {{ booking.booking_id }} Map</h1>
+    <div class="user-detail-card">
+      <div class="user-fields">
+        <div class="user-text-field"><strong>Trip:</strong><br>{{ trip.trip_id }} ({{ trip.route.route_name }})</div>
+        <div class="user-text-field"><strong>Passenger:</strong><br>{{ booking.passenger.name }}</div>
+        <div class="user-text-field"><strong>From:</strong><br>{{ booking.from_stop.stop_name }}</div>
+        <div class="user-text-field"><strong>To:</strong><br>{{ booking.to_stop.stop_name }}</div>
+        <div class="user-text-field"><strong>Seats:</strong><br>
+          {% if booking.male_seats|add:booking.female_seats > 0 %}
+            {{ booking.male_seats|add:booking.female_seats }} (M:{{ booking.male_seats }} F:{{ booking.female_seats }})
+          {% else %}
+            {{ booking.number_of_seats }}
+          {% endif %}
+        </div>
+        <div class="user-text-field"><strong>Total Fare:</strong><br>{{ booking.total_fare }}</div>
+        <div class="user-text-field"><strong>Ride Status:</strong><br>{{ booking.ride_status|default:'-' }}</div>
+        <div class="user-text-field"><strong>Booking Status:</strong><br>{{ booking.booking_status }}</div>
+        <div class="user-text-field"><strong>Payment Status:</strong><br>{{ booking.payment_status }}</div>
+        <div class="user-text-field"><strong>Pickup Verified At:</strong><br>{{ booking.pickup_verified_at|date:'Y-m-d H:i'|default:'-' }}</div>
+        <div class="user-text-field"><strong>Dropped Off At:</strong><br>{{ booking.dropoff_at|date:'Y-m-d H:i'|default:'-' }}</div>
+        <div class="user-text-field"><strong>Receipt:</strong><br>
+          {% if booking.latest_receipt_url %}
+            <a href="{{ booking.latest_receipt_url }}" target="_blank">View</a>
+          {% else %}
+            -
+          {% endif %}
+        </div>
+        <div class="user-text-field"><strong>Passenger → Driver Rating:</strong><br>{{ booking.driver_rating|default:'-' }}</div>
+        <div class="user-text-field"><strong>Passenger → Driver Comment:</strong><br>{{ booking.driver_feedback|default:'-' }}</div>
+        <div class="user-text-field"><strong>Driver → Passenger Rating:</strong><br>{{ booking.passenger_rating|default:'-' }}</div>
+        <div class="user-text-field"><strong>Driver → Passenger Comment:</strong><br>{{ booking.passenger_feedback|default:'-' }}</div>
+      </div>
+
+      <div id="bookingMap"></div>
+      <div class="map-summary">
+        <div class="map-summary-box">
+          <div><strong>Total Distance:</strong> {{ total_distance|default:'0' }} km</div>
+          <div><strong>Total Price:</strong> {{ total_price|default:'0' }}</div>
+          <div id="liveRuntime" style="margin-top:6px;"></div>
+        </div>
+      </div>
+
+      <h2 style="margin-top:2em;">Segments for this Booking</h2>
+      {% if segments %}
+        <div class="vehicle-list" style="margin-top:12px;">
+          {% for s in segments %}
+            <div class="vehicle-card">
+              <div class="vehicle-main-row">
+                <div class="vehicle-main-item"><strong>From:</strong> {{ s.from_stop_name }} ({{ s.from_stop_order }})</div>
+                <div class="vehicle-main-item"><strong>To:</strong> {{ s.to_stop_name }} ({{ s.to_stop_order }})</div>
+                <div class="vehicle-main-item"><strong>Distance:</strong> {{ s.distance_km }} km</div>
+                <div class="vehicle-main-item"><strong>Duration:</strong> {{ s.duration_minutes }} min</div>
+                <div class="vehicle-main-item"><strong>Price:</strong> {{ s.price }}</div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p>No segment breakdown found between these stops.</p>
+      {% endif %}
+    </div>
+  </main>
+{% endblock %}
+
+{% block scripts %}
+  {{ route_stops_data|json_script:"routeStopsData" }}
+  {{ route_geometry_data|json_script:"routeGeometryData" }}
+  {{ segments_path_coords_data|json_script:"segmentsPathCoordsData" }}
+  {{ booking_span_data|json_script:"bookingSpanData" }}
+  {{ trip_meta_data|json_script:"tripMetaData" }}
+  {{ booking_meta_data|json_script:"bookingMetaData" }}
+  {{ sos_markers_data|json_script:"sosMarkersData" }}
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    (function() {
+      const mapEl = document.getElementById('bookingMap');
+      if (!mapEl) return;
+
+      const map = L.map('bookingMap');
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      const bounds = [];
+
+      // Canonical route stops for marker display (full route)
+      const routeStops = JSON.parse(
+        (document.getElementById('routeStopsData')?.textContent || '[]')
+      );
+
+      // Determine booking span along the route by stop_order
+      const bookingSpan = JSON.parse(
+        (document.getElementById('bookingSpanData')?.textContent || '{}')
+      );
+      const bookingFromOrder = (bookingSpan && bookingSpan.from_order != null) ? bookingSpan.from_order : null;
+      const bookingToOrder = (bookingSpan && bookingSpan.to_order != null) ? bookingSpan.to_order : null;
+
+      // Prefer dense geometry points from backend if available
+      const routeGeometry = JSON.parse(
+        (document.getElementById('routeGeometryData')?.textContent || '[]')
+      );
+      const geometryPoints = routeGeometry.map(p => [p.lat, p.lng]);
+
+      if (geometryPoints.length >= 2) {
+        const cleanPath = geometryPoints;
+        L.polyline(cleanPath, { color: '#27ae60', weight: 4, opacity: 0.95 }).addTo(map);
+        cleanPath.forEach(pt => bounds.push(pt));
+
+        // Color-coded markers per booking span using stop_order
+        routeStops.forEach((rs, idx) => {
+          let color = 'grey';
+          if (bookingFromOrder !== null && bookingToOrder !== null) {
+            if (rs.order < bookingFromOrder || rs.order > bookingToOrder) {
+              color = 'grey';
+            } else if (rs.order === bookingFromOrder) {
+              color = 'green'; // booking pickup
+            } else if (rs.order === bookingToOrder) {
+              color = 'red'; // booking drop-off
+            } else {
+              color = 'orange'; // within booking path
+            }
+          }
+          const marker = L.circleMarker([rs.lat, rs.lng], {
+            radius: 6,
+            color,
+            fillColor: color,
+            fillOpacity: 0.9
+          }).addTo(map);
+          let label = rs.name || `Stop ${idx + 1}`;
+          if (rs.order === bookingFromOrder) {
+            label = 'Pickup: ' + label;
+          } else if (rs.order === bookingToOrder) {
+            label = 'Drop-off: ' + label;
+          }
+          marker.bindPopup(label);
+          bounds.push([rs.lat, rs.lng]);
+        });
+      } else {
+        // Next preference: canonical Route stops (updated by backend when trip is edited)
+        if (routeStops.length >= 2) {
+          const cleanPath = routeStops.map(rs => [rs.lat, rs.lng]);
+          L.polyline(cleanPath, { color: '#27ae60', weight: 4, opacity: 0.9 }).addTo(map);
+          cleanPath.forEach(pt => bounds.push(pt));
+
+          // Mark all stops with colors relative to booking span using stop_order
+          routeStops.forEach((rs, idx) => {
+            let color = 'grey';
+            if (bookingFromOrder !== null && bookingToOrder !== null) {
+              if (rs.order < bookingFromOrder || rs.order > bookingToOrder) {
+                color = 'grey';
+              } else if (rs.order === bookingFromOrder) {
+                color = 'green';
+              } else if (rs.order === bookingToOrder) {
+                color = 'red';
+              } else {
+                color = 'orange';
+              }
+            }
+            const marker = L.circleMarker([rs.lat, rs.lng], {
+              radius: 6,
+              color,
+              fillColor: color,
+              fillOpacity: 0.9
+            }).addTo(map);
+            let label = rs.name || `Stop ${idx + 1}`;
+            if (rs.order === bookingFromOrder) {
+              label = 'Pickup: ' + label;
+            } else if (rs.order === bookingToOrder) {
+              label = 'Drop-off: ' + label;
+            }
+            marker.bindPopup(label);
+          });
+        } else {
+          // Fallback: build path from TripStopBreakdown segments in order
+          const pathCoords = JSON.parse(
+            (document.getElementById('segmentsPathCoordsData')?.textContent || '[]')
+          );
+
+          if (pathCoords.length) {
+            const cleanPath = [pathCoords[0]];
+            for (let i = 1; i < pathCoords.length; i++) {
+              const prev = cleanPath[cleanPath.length - 1];
+              const curr = pathCoords[i];
+              if (prev[0] !== curr[0] || prev[1] !== curr[1]) {
+                cleanPath.push(curr);
+              }
+            }
+            L.polyline(cleanPath, { color: '#27ae60', weight: 4, opacity: 0.85 }).addTo(map);
+            cleanPath.forEach(pt => bounds.push(pt));
+
+            // Mark start and end of this segment-only path
+            const start = cleanPath[0];
+            const end = cleanPath[cleanPath.length - 1];
+            const startMarker = L.circleMarker(start, {
+              radius: 6,
+              color: 'green',
+              fillColor: 'green',
+              fillOpacity: 0.9
+            }).addTo(map);
+            startMarker.bindPopup('Pickup: {{ booking.from_stop.stop_name|escapejs }}');
+            const endMarker = L.circleMarker(end, {
+              radius: 6,
+              color: 'red',
+              fillColor: 'red',
+              fillOpacity: 0.9
+            }).addTo(map);
+            endMarker.bindPopup('Drop-off: {{ booking.to_stop.stop_name|escapejs }}');
+          }
+        }
+      }
+
+      if (bounds.length) {
+        map.fitBounds(bounds, { padding: [20, 20] });
+      } else {
+        map.setView([30.3753, 69.3451], 5);
+      }
+
+      function _sosIcon() {
+        return L.divIcon({
+          className: '',
+          html: '<div class="sos-marker"></div>',
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+        });
+      }
+
+      const sosMarkers = JSON.parse(
+        (document.getElementById('sosMarkersData')?.textContent || '[]')
+      );
+      sosMarkers.forEach(i => {
+        if (!i || i.lat == null || i.lng == null) return;
+        const marker = L.marker([Number(i.lat), Number(i.lng)], { icon: _sosIcon() }).addTo(map);
+        const note = i.note ? String(i.note) : '-';
+        const who = i.actor_name ? String(i.actor_name) : 'User';
+        const role = i.role ? String(i.role) : '-';
+        marker.bindPopup(`<strong>SOS</strong><br/>${who} (${role})<br/>${note}`);
+      });
+
+      const tripMeta = JSON.parse(
+        (document.getElementById('tripMetaData')?.textContent || '{}')
+      );
+      const bookingMeta = JSON.parse(
+        (document.getElementById('bookingMetaData')?.textContent || '{}')
+      );
+
+      function _initials(name) {
+        if (!name) return 'U';
+        const parts = String(name).trim().split(/\s+/).filter(Boolean);
+        const a = parts[0]?.[0] || 'U';
+        const b = parts.length > 1 ? (parts[parts.length - 1]?.[0] || '') : '';
+        return (a + b).toUpperCase();
+      }
+
+      function _avatarIcon(photoUrl, name, ringClass) {
+        if (photoUrl) {
+          const html = `<div class="avatar-marker ${ringClass}"><img src="${photoUrl}" alt="" /></div>`;
+          return L.divIcon({
+            className: '',
+            html,
+            iconSize: [38, 38],
+            iconAnchor: [19, 19],
+          });
+        }
+        const html = `<div class="avatar-fallback ${ringClass}">${_initials(name)}</div>`;
+        return L.divIcon({
+          className: '',
+          html,
+          iconSize: [38, 38],
+          iconAnchor: [19, 19],
+        });
+      }
+
+      function _driverIcon() {
+        const svg = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8h-1.81l-1.62-3.24A2 2 0 0 0 14.79 3H9.21a2 2 0 0 0-1.78 1.76L5.81 8H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h1a3 3 0 0 0 6 0h2a3 3 0 0 0 6 0h1a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2Zm-2.76 0H6.76l1.2-2.4c.16-.32.49-.6.85-.6h6.38c.36 0 .69.28.85.6L17.24 8ZM8 19a1 1 0 1 1 0-2 1 1 0 0 1 0 2Zm8 0a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></svg>';
+        const html = `<div class="driver-icon driver-ring">${svg}</div>`;
+        return L.divIcon({
+          className: '',
+          html,
+          iconSize: [38, 38],
+          iconAnchor: [19, 19],
+        });
+      }
+
+      const liveLayer = L.layerGroup().addTo(map);
+      let driverMarker = null;
+      let passengerMarker = null;
+      let passengerPickupFallbackMarker = null;
+      let driverPathLine = null;
+
+      function _bookingPopupHtml(meta) {
+        if (!meta) return '';
+        const start = meta.from_stop_name || '-';
+        const end = meta.to_stop_name || '-';
+        const p2d = meta.passenger_to_driver_rating != null ? meta.passenger_to_driver_rating : '-';
+        const d2p = meta.driver_to_passenger_rating != null ? meta.driver_to_passenger_rating : '-';
+        return `
+          <div style="min-width:220px">
+            <div><strong>${meta.passenger_name || 'Passenger'}</strong></div>
+            <div style="margin-top:6px"><strong>Route:</strong> ${start} → ${end}</div>
+            <div style="margin-top:6px"><strong>Passenger → Driver:</strong> ${p2d}</div>
+            <div><strong>Driver → Passenger:</strong> ${d2p}</div>
+          </div>
+        `;
+      }
+
+      async function fetchLiveState() {
+        if (!tripMeta.trip_id) return null;
+        const tripIdEncoded = encodeURIComponent(tripMeta.trip_id);
+        const url = `/lets_go/trips/${tripIdEncoded}/location/`;
+        try {
+          const res = await fetch(url, { method: 'GET', credentials: 'same-origin' });
+          const data = await res.json();
+          return data && data.success ? data : null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function renderLiveState(payload) {
+        if (!payload || !payload.live_state) return;
+        const live = payload.live_state;
+
+        const pathRaw = Array.isArray(live.driver_path) ? live.driver_path : [];
+        const path = pathRaw
+          .filter(p => p && p.lat != null && p.lng != null)
+          .map(p => [Number(p.lat), Number(p.lng)]);
+
+        const driverMeta = payload.driver_meta || {};
+        const lastSeen = driverMeta.last_seen_seconds;
+        const signalLost = driverMeta.signal_lost === true || (typeof lastSeen === 'number' && lastSeen > 30);
+        const pathColor = signalLost ? '#e74c3c' : '#8e44ad';
+
+        if (path.length >= 2) {
+          if (!driverPathLine) {
+            driverPathLine = L.polyline(path, { color: pathColor, weight: 4, opacity: 0.9 }).addTo(liveLayer);
+          } else {
+            driverPathLine.setLatLngs(path);
+            driverPathLine.setStyle({ color: pathColor });
+          }
+        } else {
+          if (driverPathLine) {
+            liveLayer.removeLayer(driverPathLine);
+            driverPathLine = null;
+          }
+        }
+
+        try {
+          const rtEl = document.getElementById('liveRuntime');
+          if (rtEl) {
+            const rt = payload.runtime || {};
+            const pieces = [];
+            if (signalLost) {
+              pieces.push(`<div><strong>Signal:</strong> Lost${typeof lastSeen === 'number' ? ` (${Number(lastSeen)}s ago)` : ''}</div>`);
+            } else if (typeof lastSeen === 'number') {
+              pieces.push(`<div><strong>Last seen:</strong> ${Number(lastSeen)}s ago</div>`);
+            }
+            if (rt.driver_speed_kph != null) {
+              pieces.push(`<div><strong>Speed:</strong> ${Number(rt.driver_speed_kph).toFixed(1)} km/h</div>`);
+            }
+            if (rt.passenger_eta_seconds_to_dropoff != null) {
+              const mins = Math.max(Math.round(Number(rt.passenger_eta_seconds_to_dropoff) / 60), 0);
+              pieces.push(`<div><strong>ETA (to drop-off):</strong> ${mins} min</div>`);
+            }
+            rtEl.innerHTML = pieces.join('');
+          }
+        } catch (e) {}
+
+        const drv = live.driver;
+        if (drv && drv.lat != null && drv.lng != null) {
+          const icon = _driverIcon();
+          const pos = [Number(drv.lat), Number(drv.lng)];
+          if (!driverMarker) {
+            driverMarker = L.marker(pos, { icon }).addTo(liveLayer);
+          } else {
+            driverMarker.setLatLng(pos);
+            driverMarker.setIcon(icon);
+          }
+          driverMarker.bindPopup(`<strong>Driver:</strong> ${tripMeta.driver_name || 'Driver'}`);
+        }
+
+        const passengers = Array.isArray(live.passengers) ? live.passengers : [];
+        const p = passengers.find(x => x && x.booking_id != null && String(x.booking_id) === String(bookingMeta.booking_id));
+        if (p && p.lat != null && p.lng != null) {
+          const name = bookingMeta.passenger_name || 'Passenger';
+          const photo = bookingMeta.passenger_profile_photo || null;
+          const icon = _avatarIcon(photo, name, 'passenger-ring');
+          const pos = [Number(p.lat), Number(p.lng)];
+          if (!passengerMarker) {
+            passengerMarker = L.marker(pos, { icon }).addTo(liveLayer);
+          } else {
+            passengerMarker.setLatLng(pos);
+            passengerMarker.setIcon(icon);
+          }
+          passengerMarker.bindPopup(_bookingPopupHtml(bookingMeta) || `<strong>${name}</strong>`);
+
+          if (passengerPickupFallbackMarker) {
+            liveLayer.removeLayer(passengerPickupFallbackMarker);
+            passengerPickupFallbackMarker = null;
+          }
+        } else {
+          const lat = bookingMeta.from_stop_lat;
+          const lng = bookingMeta.from_stop_lng;
+          if (lat != null && lng != null) {
+            const name = bookingMeta.passenger_name || 'Passenger';
+            const photo = bookingMeta.passenger_profile_photo || null;
+            const icon = _avatarIcon(photo, name, 'passenger-ring');
+            const pos = [Number(lat), Number(lng)];
+            if (!passengerPickupFallbackMarker) {
+              passengerPickupFallbackMarker = L.marker(pos, { icon, opacity: 0.9 }).addTo(liveLayer);
+            } else {
+              passengerPickupFallbackMarker.setLatLng(pos);
+              passengerPickupFallbackMarker.setIcon(icon);
+            }
+            try {
+              const el = passengerPickupFallbackMarker.getElement();
+              if (el) el.classList.add('pickup-fallback');
+            } catch (e) {}
+            passengerPickupFallbackMarker.bindPopup(_bookingPopupHtml(bookingMeta) || `<strong>${name}</strong>`);
+          }
+        }
+      }
+
+      let polling = false;
+      async function poll() {
+        if (polling) return;
+        polling = true;
+        const payload = await fetchLiveState();
+        if (payload) {
+          renderLiveState(payload);
+        }
+        polling = false;
+      }
+
+      poll();
+      setInterval(poll, 3500);
+    })();
+  </script>
+{% endblock %}

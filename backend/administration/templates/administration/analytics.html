@@ -1,0 +1,44 @@
+{% extends 'administration/base.html' %}
+{% load static %}
+
+{% block title %}Analytics{% endblock %}
+
+{% block head_extra %}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
+{% endblock %}
+
+{% block content %}
+  <main class="user-main">
+    <h1 class="page-title">Analytics & Reports</h1>
+    <div class="user-detail-card">
+      <div class="user-fields" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));">
+        <div class="user-text-field">
+          <strong>From</strong><br>
+          <input type="date" id="from" style="width:100%; padding:8px; margin-top:8px;" />
+        </div>
+        <div class="user-text-field">
+          <strong>To</strong><br>
+          <input type="date" id="to" style="width:100%; padding:8px; margin-top:8px;" />
+        </div>
+        <div class="user-text-field" style="display:flex; flex-direction:column; justify-content:flex-end;">
+          <button type="button" onclick="exportCSV()" style="padding:10px 14px;">Export CSV</button>
+        </div>
+      </div>
+
+      <div style="margin-top:18px;" class="chart-container">
+        <canvas id="deepChart"></canvas>
+      </div>
+    </div>
+  </main>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    new Chart(document.getElementById('deepChart'), {
+      type:'bar',
+      data:{labels:['Mon','Tue','Wed','Thu','Fri'],datasets:[{label:'Rides',data:[100,150,120,170,200],backgroundColor:'#3498db'}]},
+      options:{title:{display:true,text:'Rides per Day'}}
+    });
+    function exportCSV(){ alert('CSV Exported'); }
+  </script>
+{% endblock %}
